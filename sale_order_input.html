@@ -104,7 +104,7 @@ table{border-collapse:collapse;min-width:1040px;width:100%;table-layout:fixed}th
 <div class="secthead">첨부파일</div>
 <div class="toolbar"><button class="btn" onclick="msg('프로토타입에서는 파일첨부를 지원하지 않습니다.')">파일첨부</button><button class="btn" onclick="msg('다운로드 대상 파일이 없습니다.')">다운로드</button><button class="btn" onclick="msg('미리보기 대상 파일이 없습니다.')">미리보기</button><button class="btn" onclick="msg('삭제할 파일이 없습니다.')">파일삭제</button></div>
 <div class="att"><table style="min-width:900px"><thead><tr><th style="width:34px"></th><th>파일명</th><th style="width:150px">Version</th><th style="width:280px">파일내용</th><th style="width:90px">크기</th><th style="width:90px">확장자</th></tr></thead><tbody id="attBody"><tr><td colspan="6" class="c" style="height:64px;color:#8a97a2">첨부파일이 없습니다.</td></tr></tbody></table></div>
-<div class="mask" id="xlMask"><div class="dlg" style="width:min(1100px,96vw);margin-top:30px"><div class="dlghead">엑셀 수주 일괄등록 <span id="xlInfo" style="font-weight:400;color:#6b7a86;margin-left:8px"></span><button onclick="xlClose()">✕</button></div><div class="dlgbody"><div style="display:flex;gap:12px;align-items:center;margin-bottom:6px"><label><input type="checkbox" id="xlOver" onchange="xlRender()"> 이미 있는 제번은 덮어쓰기</label><span style="color:#8a97a2">오류가 있는 줄은 저장하지 않습니다. 고쳐서 다시 올리세요.</span></div><div class="dlgwrap" style="height:min(420px,60vh)"><table style="min-width:900px"><thead><tr><th style="width:44px">행</th><th style="width:120px">제번</th><th style="width:60px">공장</th><th style="width:90px">수주일</th><th style="width:60px">유형</th><th style="width:120px">고객사</th><th style="width:140px">품명</th><th style="width:110px">모델</th><th>상태</th></tr></thead><tbody id="xlBody"></tbody></table></div></div><div class="dlgfoot"><button class="btn" id="xlGo" onclick="xlSave()" style="font-weight:700">▤ 저장</button><button class="btn" onclick="xlClose()">닫기</button></div></div></div>
+<div class="mask" id="xlMask"><div class="dlg" style="width:min(1100px,96vw);margin-top:30px"><div class="dlghead">엑셀 수주 일괄등록 <span id="xlInfo" style="font-weight:400;color:#6b7a86;margin-left:8px"></span><button onclick="xlClose()">✕</button></div><div class="dlgbody"><div style="display:flex;gap:12px;align-items:center;margin-bottom:6px"><label><input type="checkbox" id="xlOver" onchange="xlRender()"> 이미 있는 제번은 덮어쓰기</label><span style="color:#8a97a2">오류가 있는 줄은 저장하지 않습니다. 고쳐서 다시 올리세요.</span></div><div class="dlgwrap" style="height:min(420px,60vh)"><table style="min-width:900px"><thead><tr><th style="width:44px">행</th><th style="width:190px">관리제번 → 제번</th><th style="width:60px">공장</th><th style="width:90px">수주일</th><th style="width:60px">유형</th><th style="width:120px">고객사</th><th style="width:140px">품명</th><th style="width:110px">모델</th><th>상태</th></tr></thead><tbody id="xlBody"></tbody></table></div></div><div class="dlgfoot"><button class="btn" id="xlGo" onclick="xlSave()" style="font-weight:700">▤ 저장</button><button class="btn" onclick="xlClose()">닫기</button></div></div></div>
 <footer class="foot"><button class="btn" onclick="save()">▤ 저장</button><button class="btn" onclick="clearForm()">✕ 신규</button><button class="btn" onclick="xlTemplate()" title="수주 일괄등록용 엑셀 양식을 내려받습니다 (* 표시 = 필수)">▦ 엑셀양식</button><button class="btn" onclick="xlFile.click()" title="엑셀 양식에 적은 수주를 한 번에 등록합니다 — 미리보기에서 확인 후 저장">⇪ 엑셀등록</button><input type="file" id="xlFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="xlLoad(this.files[0]);this.value=''"><button class="btn" onclick="window.parent?.closeActive?.()">⊠ 닫기</button><span class="msg" id="message">제번 등 필수항목을 입력하고 저장하세요.</span></footer>
 </div>
 
@@ -189,10 +189,13 @@ load(seed);
 <script>
 /* ── 엑셀 양식으로 수주 일괄등록 ─────────────────────────────────────────
  *  [▦ 엑셀양식] 양식 내려받기 (* = 필수) → 작성 → [⇪ 엑셀등록] → 미리보기에서 확인 → 저장
- *  한 줄 = 제번 1건. 저장은 화면 [▤ 저장]과 같은 경로(제번·수주·수주현황)를 탄다.
+ *  한 줄 = 관리제번 1건. 공정수만큼 관리제번 끝에 A·B·C… 를 붙인 제번으로 나눠 저장한다
+ *  (공정수 1 → 관리제번+A. 숫자로 안 끝나는 관리제번은 공정수 1이면 그대로). 금액(견적가·수주가·판매가)은 공정 수로 균등 분할.
+ *  저장은 화면 [▤ 저장]과 같은 경로(제번·수주·수주현황)를 탄다.
  *  고객사·사업부·아이템·금형타입·기계사양·양산처·담당자는 기준정보의 코드 또는 이름으로 적는다. */
 const XL_COLS=[   /* [머리글, 입력칸 id, 필수, 설명] */
- ['제번','job_no',1,'예) J26137'],
+ ['관리제번','base_job',1,'예) 26DHA001 — 숫자로 끝나게. 저장하면 공정수만큼 26DHA001A·B·C… 제번으로 나뉨'],
+ ['공정수','proc_n',0,'비우면 1 (1~26)'],
  ['공장','plant',0,'1공장 / 2공장 (비우면 1공장)'],
  ['수주일','order_date',1,'2026-10-13 형식 또는 엑셀 날짜'],
  ['수주유형','otype',1,'신작 / 개조 / 수리 / 유상사급 중 하나'],
@@ -209,9 +212,9 @@ const XL_COLS=[   /* [머리글, 입력칸 id, 필수, 설명] */
  ['개발유형','devtype',0,'사내 / 외주'],
  ['도번','drawing_no',0,''],
  ['견적서번호','quo',0,''],
- ['견적가','quo_price',0,'숫자'],
- ['수주가','order_price',0,'숫자'],
- ['판매가','sales_price',0,'숫자'],
+ ['견적가','quo_price',0,'숫자 (공정수 2 이상이면 공정별로 나눠 저장)'],
+ ['수주가','order_price',0,'숫자 (공정별로 나눔)'],
+ ['판매가','sales_price',0,'숫자 (공정별로 나눔)'],
  ['조수','set_qty',0,'숫자'],
  ['사용재료','material_used',0,''],
  ['ECO','eco',0,''],
@@ -221,7 +224,9 @@ const XL_COLS=[   /* [머리글, 입력칸 id, 필수, 설명] */
  ['비고','remark',0,'']];
 const XL_LOOK={cust:['customer','cust_code','cust_name'],biz:['biz','biz_code','biz_name'],item:['item','item_code','item_name'],mold:['mold','mold_code','mold_name'],
  ms:['mspec','ms_code','ms_name'],mp:['mass_production','mp_code','mp_name'],mgr:['employee','mgr_code','mgr_name']};
-const XL_DATE=new Set(['order_date','s1p','dlvp']),XL_NUM=new Set(['quo_price','order_price','sales_price','set_qty']);
+const XL_DATE=new Set(['order_date','s1p','dlvp']),XL_NUM=new Set(['quo_price','order_price','sales_price','set_qty']),XL_SPLIT=['quo_price','order_price','sales_price'];
+/* 관리제번 + 공정수 → 제번 목록 */
+const xlJobs=(b,n)=>n>=2?Array.from({length:n},(_,i)=>b+String.fromCharCode(65+i)):[/\d$/.test(b)?b+'A':b];
 const XL_SEL={plant:['1공장','2공장'],otype:['신작','개조','수리','유상사급'],status:['진행','보류','완료','취소'],devtype:['사내','외주'],dom:['국내','해외']};
 let XL=[];
 function xlLib(){if(window.XLSX)return Promise.resolve();return new Promise((ok,no)=>{const s=document.createElement('script');
@@ -229,10 +234,10 @@ function xlLib(){if(window.XLSX)return Promise.resolve();return new Promise((ok,
 async function xlTemplate(){
  try{await xlLib()}catch(e){return msg(e.message)}
  const head=XL_COLS.map(c=>c[0]+(c[2]?'*':''));
- const ex={제번:'J26001',공장:'1공장',수주일:new Date().toISOString().slice(0,10),수주유형:'신작',고객사:'(고객사 이름)',품명:'(품명)',모델:'(모델)',수주상태:'진행',개발유형:'사내','국내/해외':'국내'};
+ const ex={관리제번:'26DHA001',공정수:1,공장:'1공장',수주일:new Date().toISOString().slice(0,10),수주유형:'신작',고객사:'(고객사 이름)',품명:'(품명)',모델:'(모델)',수주상태:'진행',개발유형:'사내','국내/해외':'국내'};
  const ws=XLSX.utils.aoa_to_sheet([head,XL_COLS.map(c=>ex[c[0]]??'')]);ws['!cols']=XL_COLS.map(c=>({wch:Math.max(10,c[0].length*2+4)}));
  const guide=XLSX.utils.aoa_to_sheet([['항목','필수','작성 방법'],...XL_COLS.map(c=>[c[0],c[2]?'필수':'',c[3]]),[],
-  ['※ 첫 줄(머리글)은 지우거나 바꾸지 마세요. 2번째 줄의 예시는 지우고 작성하세요.'],['※ 한 줄 = 제번 1건. 같은 제번을 두 줄에 쓰면 오류입니다.'],['※ 이미 등록된 제번은 미리보기에서 「덮어쓰기」를 체크해야 저장됩니다.']]);
+  ['※ 첫 줄(머리글)은 지우거나 바꾸지 마세요. 2번째 줄의 예시는 지우고 작성하세요.'],['※ 한 줄 = 관리제번 1건. 공정수 3이면 26DHA001A · 26DHA001B · 26DHA001C 세 제번으로 저장됩니다.'],['※ 같은 관리제번을 두 줄에 쓰면 오류입니다.'],['※ 이미 등록된 제번이 있으면 미리보기에서 「덮어쓰기」를 체크해야 저장됩니다.']]);
  guide['!cols']=[{wch:14},{wch:6},{wch:60}];
  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'수주등록');XLSX.utils.book_append_sheet(wb,guide,'작성안내');
  XLSX.writeFile(wb,'수주등록_양식.xlsx');msg('수주등록 엑셀 양식을 내려받았습니다. * 표시 항목은 반드시 입력하세요.');
@@ -252,8 +257,8 @@ async function xlLoad(file){
  let grid;
  try{const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const ws=wb.Sheets['수주등록']||wb.Sheets[wb.SheetNames[0]];
   grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:'',blankrows:false})}catch(e){return msg('엑셀을 읽지 못했습니다: '+String(e.message||e).slice(0,100))}
- const hi=grid.findIndex(r=>r.some(c=>xlKey(c)==='제번'));
- if(hi<0)return msg('「제번」 머리글을 찾지 못했습니다. [▦ 엑셀양식]으로 받은 양식을 쓰세요.');
+ const hi=grid.findIndex(r=>r.some(c=>xlKey(c)==='관리제번'));
+ if(hi<0)return msg('「관리제번」 머리글을 찾지 못했습니다. [▦ 엑셀양식]으로 받은 양식을 쓰세요.');
  const col={};grid[hi].forEach((h,i)=>{const k=xlKey(h);const c=XL_COLS.find(x=>xlKey(x[0])===k);if(c&&col[c[1]]==null)col[c[1]]=i});
  const miss=XL_COLS.filter(c=>c[2]&&col[c[1]]==null).map(c=>c[0]);
  if(miss.length)return msg('엑셀에 필수 열이 없습니다: '+miss.join(', '));
@@ -274,14 +279,18 @@ async function xlLoad(file){
    else x=String(x??'').trim();
    if(req&&x==='')err.push(h+' 비어 있음');
    v[id]=x}
-  v.job_no=v.job_no.toUpperCase();
+  v.base_job=v.base_job.toUpperCase();
+  let n=1;if(v.proc_n!==''){n=Number(v.proc_n);if(!Number.isInteger(n)||n<1||n>26){err.push('공정수는 1~26');n=1}}
+  v.jobs=v.base_job?xlJobs(v.base_job,n):[];
   for(const[id,ok]of Object.entries(XL_SEL))if(v[id]&&!ok.includes(v[id]))err.push(`${xlName(id)} 「${v[id]}」 (${ok.join('/')} 중 하나)`);
   for(const k of Object.keys(XL_LOOK)){if(!v[k])continue;const L=ref[k];
    if(!L){err.push(xlName(k)+' 기준정보를 읽지 못함');continue}
    const q=v[k].toLowerCase(),hit=L.find(x=>x.code.toLowerCase()===q)||L.find(x=>x.name.toLowerCase()===q);
    if(!hit)err.push(`${xlName(k)} 「${v[k]}」 기준정보에 없음`);else v[k]=hit}
-  if(v.job_no){if(seen.has(v.job_no))err.push(`제번 중복 (${seen.get(v.job_no)}행과 같음)`);else seen.set(v.job_no,hi+i+2)}
-  XL.push({row:hi+i+2,v,err,exist:exist.has(v.job_no)})});
+  for(const j of v.jobs){if(seen.has(j)){err.push(`제번 ${j} 중복 (${seen.get(j)}행과 같음)`);break}}
+  v.jobs.forEach(j=>{if(!seen.has(j))seen.set(j,hi+i+2)});
+  const ex=v.jobs.filter(j=>exist.has(j));
+  XL.push({row:hi+i+2,v,err,exist:ex.length>0,exJobs:ex})});
  if(!XL.length)return msg('엑셀에 등록할 줄이 없습니다.');
  xlOver.checked=false;xlRender();xlMask.classList.add('on');
  msg(`${file.name} — ${XL.length}줄을 읽었습니다. 미리보기에서 확인 후 [▤ 저장]을 누르세요.`);
@@ -292,8 +301,8 @@ function xlRender(){
  xlBody.innerHTML=XL.map(x=>{const v=x.v;
   const st=x.done?`<span style="color:#1d6b3a">✔ ${esc(x.done)}</span>`:x.fail?`<span style="color:#b02a37">저장 실패 — ${esc(x.fail)}</span>`
    :x.err.length?`<span style="color:#b02a37">✖ ${esc(x.err.join(' · '))}</span>`
-   :x.exist?(xlOver.checked?'<span style="color:#8a4f08">기존 수주 덮어쓰기</span>':'<span style="color:#8a97a2">이미 있음 — 건너뜀</span>'):'<span style="color:#1d5da3">신규 등록</span>';
-  return `<tr><td style="text-align:center">${x.row}</td><td>${esc(v.job_no)}</td><td style="text-align:center">${esc(v.plant||'1공장')}</td><td style="text-align:center">${esc(v.order_date)}</td><td style="text-align:center">${esc(v.otype||'-')}</td><td>${esc(nm(v.cust))}</td><td>${esc(v.product_name)}</td><td>${esc(v.model)}</td><td title="${esc(x.err.join('\n'))}">${st}</td></tr>`}).join('');
+   :x.exist?(xlOver.checked?`<span style="color:#8a4f08">기존 수주 덮어쓰기 (${esc(x.exJobs.join(', '))})</span>`:`<span style="color:#8a97a2">이미 있음 (${esc(x.exJobs.join(', '))}) — 건너뜀</span>`):'<span style="color:#1d5da3">신규 등록</span>';
+  return `<tr><td style="text-align:center">${x.row}</td><td title="${esc(v.jobs.join(', '))}">${esc(v.base_job)}${v.jobs.length?` <span style="color:#6b7a86">→ ${esc(v.jobs.length>1?v.jobs[0]+'~'+v.jobs[v.jobs.length-1].slice(-1):v.jobs[0])}</span>`:''}</td><td style="text-align:center">${esc(v.plant||'1공장')}</td><td style="text-align:center">${esc(v.order_date)}</td><td style="text-align:center">${esc(v.otype||'-')}</td><td>${esc(nm(v.cust))}</td><td>${esc(v.product_name)}</td><td>${esc(v.model)}</td><td title="${esc(x.err.join('\n'))}">${st}</td></tr>`}).join('');
  const ok=XL.filter(xlOk).length,bad=XL.filter(x=>x.err.length).length;
  xlInfo.textContent=`전체 ${XL.length}줄 · 저장 대상 ${ok}건${bad?` · 오류 ${bad}건`:''}`;
  xlGo.disabled=!ok;
@@ -302,20 +311,25 @@ function xlClose(){xlMask.classList.remove('on')}
 async function xlSave(){
  const todo=XL.filter(xlOk);if(!todo.length)return;
  if(!confirm(`수주 ${todo.length}건을 저장합니다.${todo.some(x=>x.exist)?'\n(이미 있는 제번은 엑셀 내용으로 덮어씁니다)':''}\n계속할까요?`))return;
- xlGo.disabled=true;let ok=0,ng=0;
+ xlGo.disabled=true;let ok=0,ng=0,nj=0;
  BULK=true;
- try{for(const x of todo){const v=x.v;
-  clearForm();
-  for(const[,id]of XL_COLS){if(XL_LOOK[id]){const[,c,n]=XL_LOOK[id];if(v[id]){document.getElementById(c).value=v[id].code;document.getElementById(n).value=v[id].name}continue}
-   const el=document.getElementById(id);if(el&&v[id]!=='')el.value=v[id]}
-  msg(`엑셀 등록 중… ${ok+ng+1}/${todo.length} — ${v.job_no}`);
-  let r=false;try{r=await save()}catch(e){x.fail=String(e.message||e).slice(0,80)}
-  if(r===true){ok++;x.done=x.exist?'덮어씀':'등록됨'}else{ng++;x.fail=x.fail||message.textContent.slice(0,100)}
+ try{for(const x of todo){const v=x.v,n=v.jobs.length,fail=[];
+  const part=(tot,i)=>{const each=Math.round(tot/n);return i===n-1?tot-each*(n-1):each};
+  for(let i=0;i<n;i++){const j=v.jobs[i];
+   clearForm();
+   for(const[,id]of XL_COLS){if(XL_LOOK[id]){const[,c,nm]=XL_LOOK[id];if(v[id]){document.getElementById(c).value=v[id].code;document.getElementById(nm).value=v[id].name}continue}
+    const el=document.getElementById(id);if(el&&v[id]!=='')el.value=v[id]}
+   job_no.value=j;proc_cnt.value=String(n);
+   for(const k of XL_SPLIT)if(v[k]!=='')document.getElementById(k).value=String(part(Number(v[k]),i));   /* 금액은 공정별 균등 분할 */
+   msg(`엑셀 등록 중… ${ok+ng+1}/${todo.length} — ${j}`);
+   let r=false;try{r=await save()}catch(e){fail.push(j+': '+String(e.message||e).slice(0,60))}
+   if(r===true)nj++;else fail.push(j+': '+message.textContent.slice(0,80))}
+  if(!fail.length){ok++;x.done=(x.exist?'덮어씀':'등록됨')+` (${v.jobs.join(', ')})`}else{ng++;x.fail=fail.join(' / ')}
   xlRender()}}
  finally{BULK=false}
  clearForm();xlRender();
  try{MESDB.notify&&MESDB.notify(['sale_orders','sale_order_status_rows','jobs'])}catch(e){}
- msg(`엑셀 등록 완료 — 저장 ${ok}건${ng?` · 실패 ${ng}건 (미리보기 상태 칸 확인)`:''}`);
+ msg(`엑셀 등록 완료 — 관리제번 ${ok}건 (제번 ${nj}개) 저장${ng?` · 실패 ${ng}건 (미리보기 상태 칸 확인)`:''}`);
 }
 </script>
 <script src="mes_db.js?v=43"></script>
